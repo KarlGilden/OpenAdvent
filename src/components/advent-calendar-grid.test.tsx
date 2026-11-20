@@ -17,9 +17,9 @@ describe('AdventCalendarGrid', () => {
     const doors = screen.getAllByRole('button')
 
     expect(doors).toHaveLength(25)
-    expect(doors.map((door) => door.textContent)).toEqual(
-      ADVENT_DAYS.map((day) => `${day}Open day`),
-    )
+    ADVENT_DAYS.forEach((day, index) => {
+      expect(doors[index]).toHaveAccessibleName(`Day ${day}, unopened`)
+    })
   })
 
   it('passes the selected day to its callback', async () => {
@@ -49,13 +49,32 @@ describe('AdventCalendarGrid', () => {
     )
 
     expect(
-      screen.getByRole('button', { name: 'Day 3, opened' }),
-    ).toHaveTextContent('Opened')
+      screen.getByRole('button', { name: 'Day 3, opened. Reveal again' }),
+    ).toHaveTextContent('Reveal Again')
     expect(
-      screen.getByRole('button', { name: 'Day 25, opened' }),
+      screen.getByRole('button', { name: 'Day 25, opened. Reveal again' }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       screen.getByRole('button', { name: 'Day 4, unopened' }),
     ).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('passes per-day loading, content, and error state to doors', () => {
+    render(
+      <AdventCalendarGrid
+        days={ADVENT_DAYS}
+        openedAdvents={[2]}
+        loadingAdvents={[1]}
+        revealedContent={{ 2: 'A bright little surprise' }}
+        errors={{ 3: 'The surprise is resting.' }}
+        onOpenAdvent={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Day 1, opening' })).toBeDisabled()
+    expect(screen.getByText('A bright little surprise')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Day 3, unavailable. Try again' }),
+    ).toHaveTextContent('The surprise is resting.')
   })
 })

@@ -53,6 +53,8 @@ describe('useCalendarController', () => {
 
     expect(result.current.days).toHaveLength(25)
     expect(result.current.openedAdvents).toEqual([2, 11, 24])
+    expect(result.current.isInitializing).toBe(false)
+    expect(result.current.initializationError).toBeNull()
     expect(result.current.error).toBeNull()
   })
 
@@ -71,6 +73,7 @@ describe('useCalendarController', () => {
     expect(dependencies.openAdvent).toHaveBeenCalledWith(6)
     expect(result.current.revealedContent[6]).toBe('You are wonderful')
     expect(result.current.openedAdvents).toEqual([6])
+    expect(result.current.loadingAdvents).toEqual([])
     expect(dependencies.markAdventOpened).toHaveBeenCalledWith(6)
     expect(result.current.error).toBeNull()
   })
@@ -111,6 +114,7 @@ describe('useCalendarController', () => {
 
     expect(result.current.openedAdvents).toEqual([])
     expect(result.current.revealedContent[4]).toBeUndefined()
+    expect(result.current.adventErrors[4]).toContain('Content unavailable')
     expect(result.current.error).toContain('Content unavailable')
     expect(dependencies.markAdventOpened).not.toHaveBeenCalled()
 
@@ -118,6 +122,7 @@ describe('useCalendarController', () => {
 
     expect(result.current.openedAdvents).toEqual([4])
     expect(result.current.revealedContent[4]).toBe('Recovered content')
+    expect(result.current.adventErrors[4]).toBeUndefined()
     expect(result.current.error).toBeNull()
   })
 
@@ -136,6 +141,60 @@ describe('useCalendarController', () => {
     await waitForInitialization(result)
 
     expect(result.current.openedAdvents).toEqual([])
+    expect(result.current.initializationError).toContain('Storage unavailable')
     expect(result.current.error).toContain('Storage unavailable')
+  })
+
+  it('prevents duplicate requests while the same day is opening', async () => {
+    const dependencies = createDependencies()
+    let resolveContent: ((content: string) => void) | undefined
+    dependencies.openAdvent.mockReturnValue(
+      new Promise((resolve) => {
+        resolveContent = resolve
+      }),
+    )
+    const { result } = renderHook(() =>
+      useCalendarController(
+        dependencies.adventService,
+        dependencies.openedAdventStore,
+      ),
+    )
+    await waitForInitialization(result)
+
+    let opening: Promise<void> | undefined
+    act(() => {
+      opening = result.current.openAdvent(13)
+      void result.current.openAdvent(13)
+    })
+
+    expect(result.current.loadingAdvents).toEqual([13])
+    expect(dependencies.openAdvent).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      resolveContent?.('A patient surprise')
+      await opening
+    })
+
+    expect(result.current.loadingAdvents).toEqual([])
+    expect(result.current.revealedContent[13]).toBe('A patient surprise')
+  })
+
+  it('reports a persistence failure without hiding revealed content', async () => {
+    const dependencies = createDependencies({ content: 'Still revealed' })
+    dependencies.markAdventOpened.mockRejectedValue(
+      new Error('Storage is read-only'),
+    )
+    const { result } = renderHook(() =>
+      useCalendarController(
+        dependencies.adventService,
+        dependencies.openedAdventStore,
+      ),
+    )
+    await waitForInitialization(result)
+
+    await act(async () => result.current.openAdvent(5))
+
+    expect(result.current.revealedContent[5]).toBe('Still revealed')
+    expect(result.current.persistenceError).toContain('Storage is read-only')
   })
 })
