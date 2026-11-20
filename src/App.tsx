@@ -27,11 +27,13 @@ const defaultOpenedAdventStore = createDefaultOpenedAdventStore()
 export interface AppProps {
   readonly adventService?: AdventService
   readonly openedAdventStore?: OpenedAdventStore
+  readonly today?: Date
 }
 
 export function App({
   adventService = defaultAdventService,
   openedAdventStore = defaultOpenedAdventStore,
+  today = new Date(),
 }: AppProps = {}) {
   const calendar = useCalendarController(adventService, openedAdventStore)
 
@@ -100,6 +102,7 @@ export function App({
             loadingAdvents={calendar.loadingAdvents}
             revealedContent={calendar.revealedContent}
             errors={calendar.adventErrors}
+            today={today}
             onOpenAdvent={calendar.openAdvent}
           />
         </>

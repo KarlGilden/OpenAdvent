@@ -7,13 +7,15 @@ import { ComplimentAdventService } from './content/compliments-calendar/complime
 import { LocalStorageOpenedAdventStore } from './services/local-storage-opened-advent-store'
 import type { OpenedAdventStore } from './services/interfaces/advent-store'
 
+const TEST_TODAY = new Date(2026, 10, 20)
+
 describe('App', () => {
   beforeEach(() => {
     window.localStorage.clear()
   })
 
   it('renders the complete OpenAdvent calendar', async () => {
-    render(<App />)
+    render(<App today={TEST_TODAY} />)
 
     expect(
       screen.getByRole('heading', { level: 1, name: 'OpenAdvent' }),
@@ -26,11 +28,19 @@ describe('App', () => {
       await screen.findByRole('list', { name: 'Advent calendar days' }),
     ).toBeVisible()
     expect(screen.getAllByRole('listitem')).toHaveLength(25)
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Your November Doors' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', {
+        name: 'Day 21, locked. Opens Nov 21',
+      }),
+    ).toBeDisabled()
   })
 
   it('opens a door with its real compliment and keeps focus in place', async () => {
     const user = userEvent.setup()
-    render(<App />)
+    render(<App today={TEST_TODAY} />)
     const door = await screen.findByRole('button', {
       name: 'Day 7, unopened',
     })
@@ -53,6 +63,7 @@ describe('App', () => {
       <App
         adventService={adventService}
         openedAdventStore={firstStore}
+        today={TEST_TODAY}
       />,
     )
     await user.click(
@@ -66,6 +77,7 @@ describe('App', () => {
       <App
         adventService={adventService}
         openedAdventStore={refreshedStore}
+        today={TEST_TODAY}
       />,
     )
 
@@ -95,7 +107,9 @@ describe('App', () => {
         .mockRejectedValue(new Error('Storage unavailable')),
     }
 
-    render(<App openedAdventStore={unavailableStore} />)
+    render(
+      <App openedAdventStore={unavailableStore} today={TEST_TODAY} />,
+    )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Progress Couldn’t Be Restored',
@@ -106,7 +120,7 @@ describe('App', () => {
   })
 
   it('has no critical automated accessibility violations', async () => {
-    const { container } = render(<App />)
+    const { container } = render(<App today={TEST_TODAY} />)
     await screen.findByRole('list', { name: 'Advent calendar days' })
 
     const canvasContext = vi

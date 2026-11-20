@@ -4,12 +4,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { ADVENT_DAYS } from '../domain/advent'
 import { AdventCalendarGrid } from './advent-calendar-grid'
 
+const END_OF_NOVEMBER_CALENDAR = new Date(2026, 10, 25)
+
 describe('AdventCalendarGrid', () => {
   it('renders every advent day exactly once in calendar order', () => {
     render(
       <AdventCalendarGrid
         days={ADVENT_DAYS}
         openedAdvents={[]}
+        today={END_OF_NOVEMBER_CALENDAR}
         onOpenAdvent={vi.fn()}
       />,
     )
@@ -29,6 +32,7 @@ describe('AdventCalendarGrid', () => {
       <AdventCalendarGrid
         days={ADVENT_DAYS}
         openedAdvents={[]}
+        today={END_OF_NOVEMBER_CALENDAR}
         onOpenAdvent={onOpenAdvent}
       />,
     )
@@ -44,6 +48,7 @@ describe('AdventCalendarGrid', () => {
       <AdventCalendarGrid
         days={ADVENT_DAYS}
         openedAdvents={[3, 25]}
+        today={END_OF_NOVEMBER_CALENDAR}
         onOpenAdvent={vi.fn()}
       />,
     )
@@ -67,6 +72,7 @@ describe('AdventCalendarGrid', () => {
         loadingAdvents={[1]}
         revealedContent={{ 2: 'A bright little surprise' }}
         errors={{ 3: 'The surprise is resting.' }}
+        today={END_OF_NOVEMBER_CALENDAR}
         onOpenAdvent={vi.fn()}
       />,
     )
@@ -76,5 +82,32 @@ describe('AdventCalendarGrid', () => {
     expect(
       screen.getByRole('button', { name: 'Day 3, unavailable. Try again' }),
     ).toHaveTextContent('The surprise is resting.')
+  })
+
+  it('unlocks today and previous days while locking future days', async () => {
+    const user = userEvent.setup()
+    const onOpenAdvent = vi.fn()
+    render(
+      <AdventCalendarGrid
+        days={ADVENT_DAYS}
+        openedAdvents={[]}
+        today={new Date(2026, 10, 20)}
+        onOpenAdvent={onOpenAdvent}
+      />,
+    )
+
+    const todayDoor = screen.getByRole('button', { name: 'Day 20, unopened' })
+    const futureDoor = screen.getByRole('button', {
+      name: 'Day 21, locked. Opens Nov 21',
+    })
+
+    expect(todayDoor).toBeEnabled()
+    expect(futureDoor).toBeDisabled()
+
+    await user.click(todayDoor)
+    await user.click(futureDoor)
+
+    expect(onOpenAdvent).toHaveBeenCalledOnce()
+    expect(onOpenAdvent).toHaveBeenCalledWith(20)
   })
 })
