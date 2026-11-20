@@ -1,16 +1,33 @@
+import { useCallback, useState } from 'react'
+import { AdventCalendarGrid } from './components/advent-calendar-grid'
+import { ADVENT_DAYS, type AdventDay } from './domain/advent'
+
 export function App() {
+  const [openedAdvents, setOpenedAdvents] = useState<readonly AdventDay[]>([])
+
+  const openAdvent = useCallback((day: AdventDay) => {
+    setOpenedAdvents((currentAdvents) =>
+      currentAdvents.includes(day) ? currentAdvents : [...currentAdvents, day],
+    )
+  }, [])
+
   return (
     <main className="app-shell">
-      <section className="welcome-card" aria-labelledby="welcome-title">
-        <span className="welcome-card__star" aria-hidden="true">
+      <header className="app-header">
+        <span className="app-header__star" aria-hidden="true">
           ✦
         </span>
-        <h1 id="welcome-title">OpenAdvent</h1>
-        <p className="welcome-card__intro">
+        <h1>OpenAdvent</h1>
+        <p className="app-header__intro">
           Twenty-five little moments, waiting behind the doors.
         </p>
-        <p className="welcome-card__note">The first door will be here soon.</p>
-      </section>
+      </header>
+
+      <AdventCalendarGrid
+        days={ADVENT_DAYS}
+        openedAdvents={openedAdvents}
+        onOpenAdvent={openAdvent}
+      />
     </main>
   )
 }
