@@ -1,0 +1,226 @@
+:root {
+  color-scheme: light;
+
+  --color-spruce-950: #12372a;
+  --color-spruce-800: #24513f;
+  --color-cranberry-700: #922f3e;
+  --color-cranberry-800: #762431;
+  --color-candle-300: #f4d58d;
+  --color-ivory-50: #fffaf0;
+  --color-ink-900: #2a2021;
+  --color-ivory-muted: #f4ead8;
+
+  --color-page: var(--color-spruce-950);
+  --color-surface: var(--color-ivory-50);
+  --color-surface-muted: var(--color-ivory-muted);
+  --color-text: var(--color-ink-900);
+  --color-text-on-dark: var(--color-ivory-50);
+  --color-primary: var(--color-cranberry-700);
+  --color-primary-strong: var(--color-cranberry-800);
+  --color-accent: var(--color-candle-300);
+
+  --font-display: Georgia, 'Times New Roman', serif;
+  --font-body: 'Trebuchet MS', 'Segoe UI', sans-serif;
+
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: clamp(1.125rem, 2vw, 1.25rem);
+  --font-size-display: clamp(2.75rem, 10vw, 5.5rem);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.5rem;
+
+  --shadow-card: 0 1.5rem 4rem rgb(0 0 0 / 24%);
+  --shadow-inset: inset 0 0 0 1px rgb(146 47 62 / 16%);
+
+  --duration-fast: 150ms;
+  --duration-standard: 240ms;
+  --duration-door: 600ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  min-height: 100%;
+  background: var(--color-page);
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--color-text);
+  background: var(--color-page);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+picture,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-block-start: 0;
+}
+
+:focus-visible {
+  outline: 0.1875rem solid var(--color-accent);
+  outline-offset: var(--space-1);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--space-6);
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgb(255 250 240 / 10%) 0 0.15rem,
+      transparent 0.2rem
+    ),
+    radial-gradient(
+      circle at 84% 72%,
+      rgb(244 213 141 / 12%) 0 0.12rem,
+      transparent 0.18rem
+    );
+  background-size: 4.5rem 4.5rem, 5.5rem 5.5rem;
+}
+
+.welcome-card {
+  position: relative;
+  width: min(100%, 46rem);
+  padding: clamp(var(--space-12), 8vw, var(--space-16));
+  overflow: hidden;
+  text-align: center;
+  background: var(--color-surface);
+  border: var(--space-2) solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), var(--shadow-inset);
+}
+
+.welcome-card::before,
+.welcome-card::after {
+  position: absolute;
+  width: 8rem;
+  height: 8rem;
+  content: '';
+  border: 0.125rem solid var(--color-accent);
+  transform: rotate(45deg);
+}
+
+.welcome-card::before {
+  top: -6.5rem;
+  left: -4rem;
+}
+
+.welcome-card::after {
+  right: -4rem;
+  bottom: -6.5rem;
+}
+
+.welcome-card__star {
+  display: block;
+  margin-bottom: var(--space-3);
+  color: var(--color-primary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.welcome-card h1 {
+  margin-bottom: var(--space-4);
+  color: var(--color-primary-strong);
+  font-family: var(--font-display);
+  font-size: var(--font-size-display);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+.welcome-card__intro {
+  max-width: 34rem;
+  margin-right: auto;
+  margin-bottom: var(--space-8);
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  line-height: 1.55;
+}
+
+.welcome-card__note {
+  display: inline-block;
+  margin-bottom: 0;
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 32rem) {
+  .app-shell {
+    padding: var(--space-4);
+  }
+
+  .welcome-card {
+    padding: var(--space-12) var(--space-6);
+    border-width: var(--space-1);
+    border-radius: var(--radius-md);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
