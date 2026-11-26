@@ -6,6 +6,7 @@ import type { AdventRepository } from "../../src/core/repositories/advent.reposi
 import type { NewUserProfile, UserProfile } from "../../src/core/repositories/user.repository.js";
 import { UserService } from "../../src/core/services/user.service.js";
 import { ExampleService } from "../../src/core/services/example.service.js";
+import { AdventService, adventDateFormatter } from "../../src/core/services/advent.service.js";
 
 const issuer = "https://clerk.example.test";
 const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -41,6 +42,9 @@ function setupApp(
     adventRepository: {
       async createWithDaysAndAdmin() { throw new Error("Unexpected Advent creation"); },
       async listForMember() { throw new Error("Unexpected Advent listing"); },
+      async findForMember() { throw new Error("Unexpected Advent lookup"); },
+      async listAvailableDays() { throw new Error("Unexpected Advent day listing"); },
+      async recordOpening() { throw new Error("Unexpected Advent opening"); },
       async joinByTokenHash() { throw new Error("Unexpected Advent join"); },
       ...adventRepository,
     },
@@ -134,6 +138,65 @@ test("lists only memberships belonging to the authenticated application user", a
   assert.deepEqual(otherResponse.json(), []);
   assert.deepEqual(listForMember.mock.calls[1]?.arguments, [otherUser.id]);
   assert.deepEqual(getCurrentUser.mock.calls.map(({ arguments: args }) => args), [[providerId], [otherProviderId]]);
+});
+
+test("calendar detail and opening require membership and reject future days", async (t) => {
+  const adventId = "eaed8160-ae43-4e71-bf7c-f91b987f27f9";
+  const calendar = { id: adventId, name: "Next Advent", year: 9999, isAdmin: false };
+  const getCurrentUser = async (id: string) => id === providerId ? profile : { ...profile, id: "other-id" };
+  const findForMember = t.mock.fn<AdventRepository["findForMember"]>(async (id) => id === profile.id ? calendar : undefined);
+  const app = setupApp(t, { getCurrentUser }, { findForMember });
+  const url = `/api/advent/${adventId}`;
+  const headers = { authorization: `Bearer ${sessionToken(providerId)}` };
+  const otherHeaders = { authorization: `Bearer ${sessionToken(otherProviderId)}` };
+
+  assert.equal((await app.inject({ url: `${url}?timeZone=UTC` })).statusCode, 401);
+  assert.equal((await app.inject({ url, headers })).statusCode, 400);
+  assert.equal((await app.inject({ url: `${url}?timeZone=Invalid/Zone`, headers })).statusCode, 400);
+  assert.equal((await app.inject({ url: "/api/advent/no-id?timeZone=UTC", headers })).statusCode, 400);
+  const response = await app.inject({ url: `${url}?timeZone=UTC`, headers });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { ...calendar, days: [] });
+  assert.equal((await app.inject({ url: `${url}?timeZone=UTC`, headers: otherHeaders })).statusCode, 404);
+
+  const open = { method: "POST", url: `${url}/days/1/open`, payload: { timeZone: "UTC" } } as const;
+  const locked = await app.inject({ ...open, headers });
+  assert.equal(locked.statusCode, 403);
+  assert.equal(locked.json().error.code, "DOOR_LOCKED");
+  assert.equal((await app.inject({ ...open, headers: otherHeaders })).statusCode, 404);
+  assert.equal((await app.inject({ ...open, url: `${url}/days/26/open`, headers })).statusCode, 400);
+});
+
+test("uses the viewer's local midnight and caps available doors at day 25", async (t) => {
+  const calendar = { id: "advent-id", name: "Advent", year: 2026, isAdmin: true };
+  const door = { day: 1, content: "Surprise", openedAt: new Date("2026-12-01T07:00:00Z") };
+  const listAvailableDays = t.mock.fn<AdventRepository["listAvailableDays"]>(async () => [door]);
+  const recordOpening = t.mock.fn<AdventRepository["recordOpening"]>(async () => true);
+  const repository: AdventRepository = {
+    async listForMember() { return []; },
+    async findForMember() { return calendar; },
+    async createWithDaysAndAdmin() { return calendar; },
+    async joinByTokenHash() { return null; },
+    listAvailableDays,
+    recordOpening,
+  };
+  let now = new Date("2026-12-01T00:00:00Z");
+  const service = new AdventService(repository, () => now);
+  const userId = profile.id;
+  const west = adventDateFormatter("America/Los_Angeles")!;
+  const east = adventDateFormatter("Europe/Berlin")!;
+  assert.deepEqual(await service.getCalendar(userId, calendar.id, west), { ...calendar, days: [] });
+  assert.equal(await service.openDay(userId, calendar.id, 1, west), "locked");
+  assert.equal(recordOpening.mock.callCount(), 0);
+  assert.deepEqual(await service.getCalendar(userId, calendar.id, east), { ...calendar, days: [door] });
+  assert.deepEqual(listAvailableDays.mock.calls[0]?.arguments, [userId, calendar.id, 1]);
+  assert.equal(await service.openDay(userId, calendar.id, 1, east), "opened");
+  assert.deepEqual(recordOpening.mock.calls[0]?.arguments, [userId, calendar.id, 1]);
+  now = new Date("2026-12-30T00:00:00Z");
+  await service.getCalendar(userId, calendar.id, west);
+  now = new Date("2027-01-12T00:00:00Z");
+  await service.getCalendar(userId, calendar.id, west);
+  assert.deepEqual(listAvailableDays.mock.calls.slice(1).map(({ arguments: args }) => args[2]), [25, 25]);
 });
 
 test("provisions then returns the authenticated user with exactly the public fields", async (t) => {

@@ -273,6 +273,21 @@ p {
   border-top: 1px solid var(--color-accent);
 }
 
+.advent-list a {
+  color: var(--color-primary-strong);
+  font-weight: 700;
+}
+
+.shared-advent-title {
+  margin-block: var(--space-6);
+  color: var(--color-text-on-dark);
+  text-align: center;
+}
+
+.shared-advent-title span {
+  color: var(--color-accent);
+}
+
 .account-controls__profile {
   display: grid;
   min-width: 0;

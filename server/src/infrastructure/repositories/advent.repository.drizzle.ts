@@ -1,7 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import type { AdventRepository } from "../../core/repositories/advent.repository.js";
 import type { Database } from "../data/db.js";
-import { advent, adventDay, adventMember } from "../data/schema.js";
+import { advent, adventDay, adventDayOpening, adventMember } from "../data/schema.js";
 
 const summary = { id: advent.id, name: advent.name, year: advent.year };
 
@@ -13,6 +13,41 @@ export class DrizzleAdventRepository implements AdventRepository {
       .innerJoin(advent, eq(adventMember.adventId, advent.id))
       .where(eq(adventMember.userId, userId))
       .orderBy(desc(advent.year), advent.name, advent.id);
+  }
+
+  async findForMember(userId: string, adventId: string) {
+    const [calendar] = await this.db.select({ ...summary, isAdmin: adventMember.isAdmin }).from(adventMember)
+      .innerJoin(advent, eq(adventMember.adventId, advent.id))
+      .where(and(eq(adventMember.userId, userId), eq(adventMember.adventId, adventId)));
+    return calendar;
+  }
+
+  listAvailableDays(userId: string, adventId: string, lastDay: number) {
+    return this.db.select({
+      day: adventDay.adventDay, content: adventDay.content, openedAt: adventDayOpening.openedAt,
+    }).from(adventDay)
+      .innerJoin(adventMember, and(eq(adventMember.adventId, adventDay.adventId), eq(adventMember.userId, userId)))
+      .leftJoin(adventDayOpening, and(
+        eq(adventDayOpening.adventId, adventDay.adventId),
+        eq(adventDayOpening.adventDay, adventDay.adventDay),
+        eq(adventDayOpening.userId, userId),
+      ))
+      .where(and(eq(adventDay.adventId, adventId), lte(adventDay.adventDay, lastDay)))
+      .orderBy(adventDay.adventDay);
+  }
+
+  async recordOpening(userId: string, adventId: string, day: number) {
+    return this.db.transaction(async (transaction) => {
+      const [door] = await transaction.select({ day: adventDay.adventDay }).from(adventDay)
+        .where(and(eq(adventDay.adventId, adventId), eq(adventDay.adventDay, day)));
+      if (!door) return false;
+
+      await transaction.insert(adventDayOpening).values({ userId, adventId, adventDay: day })
+        .onConflictDoNothing({
+          target: [adventDayOpening.adventId, adventDayOpening.userId, adventDayOpening.adventDay],
+        });
+      return true;
+    });
   }
 
   async createWithDaysAndAdmin({

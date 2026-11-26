@@ -109,10 +109,48 @@ describe('AccountControls', () => {
     render(<AdventPage path="/advent" />)
 
     expect(await screen.findByText('Family Advent')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Family Advent' })).toHaveAttribute('href', '/advent/owned')
     expect(screen.getByText('Friends Advent')).toBeVisible()
     expect(fetchProfile).toHaveBeenCalledWith('/api/advent', expect.objectContaining({
       method: 'GET', headers: { Authorization: 'Bearer session-token' },
     }))
+  })
+
+  it('reveals a preloaded door while saving progress and disables doors absent from the response', async () => {
+    const user = userEvent.setup()
+    const localStorageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    let finishSaving: (response: Response) => void = () => {}
+    const saveResponse = new Promise<Response>((resolve) => { finishSaving = resolve })
+    fetchProfile.mockImplementation(async (path) => {
+      if (path === '/api/user') return Response.json({ name: 'Ada', email: 'ada@example.test' })
+      if (String(path).endsWith('/open')) return saveResponse
+      return Response.json({
+        id: 'shared', name: 'Shared Advent', year: 2020, isAdmin: false,
+        days: [
+          { day: 1, content: 'First surprise', openedAt: null },
+          { day: 2, content: 'Saved surprise', openedAt: '2020-12-02T00:00:00.000Z' },
+        ],
+      })
+    })
+    render(<AdventPage path="/advent/calendar" adventId="shared" />)
+
+    await screen.findByRole('heading', { name: 'Shared Advent 2020' })
+    expect(screen.getAllByRole('button', { name: /^Day / })).toHaveLength(25)
+    expect(screen.getByRole('button', { name: 'Day 3, locked' })).toBeDisabled()
+    expect(screen.queryByText('First surprise')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Day 2, opened. Reveal again' }))
+    expect(screen.getByText('Saved surprise')).toBeVisible()
+    expect(fetchProfile).toHaveBeenCalledTimes(2)
+
+    await user.click(screen.getByRole('button', { name: 'Day 1, unopened' }))
+    expect(screen.getByText('First surprise')).toBeVisible()
+    expect(fetchProfile).toHaveBeenCalledTimes(3)
+    expect(fetchProfile).toHaveBeenLastCalledWith('/api/advent/shared/days/1/open', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    }))
+    expect(localStorageWrite).not.toHaveBeenCalled()
+    localStorageWrite.mockRestore()
+    finishSaving(new Response(null, { status: 204 }))
   })
 
   it('displays an error if the API rejects the request', async () => {

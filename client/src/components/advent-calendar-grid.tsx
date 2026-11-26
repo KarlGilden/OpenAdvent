@@ -16,6 +16,7 @@ interface AdventCalendarGridProps {
 	readonly revealedContent?: AdventContent;
 	readonly errors?: AdventErrors;
 	readonly today?: Date;
+	readonly isDoorLocked?: (day: AdventDay) => boolean;
 	readonly adventMonth?: number;
 	readonly onOpenAdvent: (day: AdventDay) => void;
 }
@@ -27,6 +28,7 @@ export function AdventCalendarGrid({
 	revealedContent = NO_CONTENT,
 	errors = NO_ERRORS,
 	today = new Date(),
+	isDoorLocked = (day) => isAdventDayLocked(day, today),
 	onOpenAdvent,
 }: AdventCalendarGridProps) {
 	const openedAdventSet = useMemo(
@@ -46,7 +48,7 @@ export function AdventCalendarGrid({
 			aria-labelledby="calendar-title"
 		>
 			<div className="calendar__heading">
-				<p>Choose a numbered door. Opened doors wear a golden seal.</p>
+				<p id="calendar-title">Choose a numbered door. Opened doors wear a golden seal.</p>
 			</div>
 
 			<ol className="calendar__grid" aria-label="Advent calendar days">
@@ -56,7 +58,7 @@ export function AdventCalendarGrid({
 							day={day}
 							isOpened={openedAdventSet.has(day)}
 							isLoading={loadingAdventSet.has(day)}
-							isLocked={isAdventDayLocked(day, today)}
+							isLocked={isDoorLocked(day)}
 							content={revealedContent[day]}
 							error={errors[day]}
 							onOpen={onOpenAdvent}

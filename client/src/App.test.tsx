@@ -8,10 +8,7 @@ import {
   FitnessAdventService,
   type FitnessExercise,
 } from './content/fitness-calendar/fitness-advent-service'
-import {
-  LocalStorageOpenedAdventStore,
-  openedAdventsStorageKey,
-} from './services/local-storage-opened-advent-store'
+import { LocalStorageOpenedAdventStore } from './services/local-storage-opened-advent-store'
 import type { OpenedAdventStore } from './services/interfaces/advent-store'
 
 const TEST_TODAY = new Date(2026, 10, 20)
@@ -58,31 +55,18 @@ describe('App', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Day 1, unopened' }),
     )
-    expect(
-      JSON.parse(
-        window.localStorage.getItem(
-          openedAdventsStorageKey('compliments'),
-        ) ?? '[]',
-      ),
-    ).toEqual([1])
+    expect(await screen.findByRole('button', { name: 'Day 1, opened. Revisit' })).toBeEnabled()
 
     await user.selectOptions(selector, 'fitness')
     expect(
       await screen.findByRole('button', { name: 'Day 1, unopened' }),
     ).toBeEnabled()
-    expect(
-      window.localStorage.getItem(openedAdventsStorageKey('fitness')),
-    ).toBeNull()
 
     await user.click(
       screen.getByRole('button', { name: 'Day 1, unopened' }),
     )
-    expect(
-      JSON.parse(
-        window.localStorage.getItem(openedAdventsStorageKey('fitness')) ??
-          '[]',
-      ),
-    ).toEqual([1])
+    expect(await screen.findByRole('button', { name: 'Day 1, opened. Revisit' })).toBeEnabled()
+    expect(window.localStorage.length).toBe(0)
 
     await user.selectOptions(selector, 'compliments')
     expect(

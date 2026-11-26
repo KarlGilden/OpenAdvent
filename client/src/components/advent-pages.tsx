@@ -2,6 +2,7 @@ import { Show, useAuth } from '@clerk/react'
 import { useEffect, useState } from 'react'
 import { AccountControls } from './account-controls'
 import { AdventCreationForm } from './advent-creation-form'
+import { SharedAdventCalendar } from './shared-advent-calendar'
 import { AdventApiError, joinAdvent, listAdvents, type CalendarSummary } from '../services/advent-api'
 
 const pageTitles = {
@@ -13,29 +14,34 @@ const pageTitles = {
 type AdventPath = keyof typeof pageTitles
 type GetToken = () => Promise<string | null>
 
-export function AdventPage({ path }: { path: AdventPath }) {
+type AdventPageProps = { path: AdventPath; adventId?: never } | { path: '/advent/calendar'; adventId: string }
+
+export function AdventPage(props: AdventPageProps) {
   return (
     <main className="app-shell advent-page">
       <header className="app-header">
         <a href="/">OpenAdvent</a>
-        <h1>{pageTitles[path]}</h1>
+        <h1>{props.path === '/advent/calendar' ? 'Advent calendar' : pageTitles[props.path]}</h1>
       </header>
       <AccountControls>
         <Show when="signed-out">
           <p className="advent-panel">Log in to continue.</p>
         </Show>
         <Show when="signed-in">
-          <SignedInPage path={path} />
+          <SignedInPage {...props} />
         </Show>
       </AccountControls>
     </main>
   )
 }
 
-function SignedInPage({ path }: { path: AdventPath }) {
+function SignedInPage({ path, adventId }: AdventPageProps) {
   const { getToken, sessionId } = useAuth()
   if (!sessionId) return null
 
+  if (path === '/advent/calendar') {
+    return <SharedAdventCalendar key={`${sessionId}/${adventId}`} adventId={adventId} getToken={getToken} />
+  }
   if (path === '/advent/new') return <AdventCreationForm key={sessionId} getToken={getToken} />
   if (path === '/advent/join') return <AdventJoin key={sessionId} getToken={getToken} />
   return <AdventList key={sessionId} getToken={getToken} />
@@ -68,7 +74,7 @@ function AdventList({ getToken }: { getToken: GetToken }) {
   return (
     <ul className="advent-panel advent-list">
       {calendars.map(({ id, name, year }) => (
-        <li key={id}><strong>{name}</strong><span>{year}</span></li>
+        <li key={id}><a href={`/advent/${encodeURIComponent(id)}`}>{name}</a><span>{year}</span></li>
       ))}
     </ul>
   )

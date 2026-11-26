@@ -12,10 +12,15 @@ if (!root) {
 
 const path = window.location.pathname.replace(/\/$/, '')
 const isAdventPage = path === '/advent' || path === '/advent/new' || path === '/advent/join'
+const adventId = !isAdventPage ? /^\/advent\/([^/]+)$/.exec(path)?.[1] : undefined
+
+const page = isAdventPage ? <AdventPage path={path} />
+  : adventId ? <AdventPage path="/advent/calendar" adventId={adventId} />
+  : <App />
 
 createRoot(root).render(
   <StrictMode>
-    {isAdventPage ? <AdventPage path={path} /> : <App />}
+    {page}
   </StrictMode>,
 )
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { AccountControls } from './components/account-controls'
 import { AdventCalendarGrid } from './components/advent-calendar-grid'
 import {
@@ -9,27 +9,19 @@ import {
   type CalendarType,
 } from './content/calendar-registry'
 import { useCalendarController } from './controllers/use-calendar-controller'
-import { LocalStorageOpenedAdventStore } from './services/local-storage-opened-advent-store'
+import type { AdventDay } from './domain/advent'
 import type { OpenedAdventStore } from './services/interfaces/advent-store'
 import type { AdventService } from './services/interfaces/advent-service'
 
-function createDefaultOpenedAdventStore(
-  calendarType: CalendarType,
-): OpenedAdventStore {
-  try {
-    return new LocalStorageOpenedAdventStore(
-      globalThis.localStorage,
-      calendarType,
-    )
-  } catch (storageError) {
-    return {
-      async loadOpenedAdvents() {
-        throw storageError
-      },
-      async markAdventOpened() {
-        throw storageError
-      },
-    }
+function createDemoOpenedAdventStore(): OpenedAdventStore {
+  const opened = new Set<AdventDay>()
+  return {
+    async loadOpenedAdvents() {
+      return [...opened]
+    },
+    async markAdventOpened(day) {
+      opened.add(day)
+    },
   }
 }
 
@@ -120,12 +112,10 @@ export function App({
   const [selectedCalendarType, setSelectedCalendarType] =
     useState<CalendarType>(DEFAULT_CALENDAR_TYPE)
   const selectedCalendar = findCalendar(selectedCalendarType)
-  const selectedStore = useMemo(
-    () =>
-      openedAdventStore ??
-      createDefaultOpenedAdventStore(selectedCalendarType),
-    [openedAdventStore, selectedCalendarType],
-  )
+  const [demoStores] = useState(() => new Map(
+    CALENDARS.map(({ type }) => [type, createDemoOpenedAdventStore()]),
+  ))
+  const selectedStore = openedAdventStore ?? demoStores.get(selectedCalendarType)!
 
   function selectCalendar(event: ChangeEvent<HTMLSelectElement>) {
     const nextCalendarType = event.currentTarget.value
