@@ -6,6 +6,7 @@ import { healthRoutes } from "./routes/health.route.js";
 import { userRoutes } from "./routes/user.route.js";
 import { adventRoutes } from "./routes/advent.route.js";
 import { registerAuthHook } from "./hooks/auth.hook.js";
+import { handleApiError } from "./error-handler.js";
 
 interface AppDependencies {
 	clerk: { publishableKey: string; secretKey: string; jwtKey?: string };
@@ -19,6 +20,7 @@ export function buildApp(dependencies: AppDependencies) {
 		logger: { redact: ["req.headers.authorization", "req.headers.cookie"] },
 	});
 
+	app.setErrorHandler(handleApiError);
 	app.addHook("onClose", dependencies.close);
 
 	app.register(clerkPlugin, {

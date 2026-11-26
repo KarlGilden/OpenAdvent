@@ -2,6 +2,7 @@ import { getAuth } from "@clerk/fastify";
 import type { FastifyInstance } from "fastify";
 import type { UserService } from "../../core/services/user.service.js";
 import type { UserProfile } from "../../core/repositories/user.repository.js";
+import { ApiError } from "../api-error.js";
 
 declare module "fastify" {
 	interface FastifyRequest {
@@ -28,23 +29,15 @@ export function registerAuthHook(
 		const auth = getAuth(request, { acceptsToken: "session_token" });
 		if (!auth.isAuthenticated || !auth.userId) {
 			if (isPublic) return;
-			return reply.code(401).send({
-				error: { code: "UNAUTHORIZED", message: "Authentication required" },
-			});
+			throw new ApiError(401, "UNAUTHORIZED", "Authentication required");
 		}
 
 		try {
 			const { id, name, email } = await userService.getCurrentUser(auth.userId);
 			request.CurrentUserId = id;
 			request.currentUserProfile = { id, name, email };
-		} catch {
-			request.log.error("Current user lookup failed");
-			return reply.code(500).send({
-				error: {
-					code: "INTERNAL_SERVER_ERROR",
-					message: "Unable to load current user",
-				},
-			});
+		} catch (cause) {
+			throw new ApiError(500, "INTERNAL_SERVER_ERROR", "Unable to load current user", { cause });
 		}
 	});
 }

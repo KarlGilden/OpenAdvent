@@ -42,6 +42,9 @@ function setupApp(
       async createWithDaysAndAdmin() { throw new Error("Unexpected Advent creation"); },
       async listForMember() { throw new Error("Unexpected Advent listing"); },
       async findForMember() { throw new Error("Unexpected Advent lookup"); },
+      async listDays() { throw new Error("Unexpected editor day listing"); },
+      async updateName() { throw new Error("Unexpected Advent rename"); },
+      async updateDayContent() { throw new Error("Unexpected door update"); },
       async listAvailableDays() { throw new Error("Unexpected Advent day listing"); },
       async recordOpening() { throw new Error("Unexpected Advent opening"); },
       async joinByTokenHash() { throw new Error("Unexpected Advent join"); },
@@ -114,7 +117,10 @@ test("creates an Advent with content and a hashed invitation for the authenticat
 });
 
 test("lists only memberships belonging to the authenticated application user", async (t) => {
-  const calendars = [{ id: "owned", name: "Owned", year: 2026 }, { id: "joined", name: "Joined", year: 2025 }];
+  const calendars = [
+    { id: "owned", name: "Owned", year: 2026, isAdmin: true },
+    { id: "joined", name: "Joined", year: 2025, isAdmin: false },
+  ];
   const otherUser = { ...profile, id: "other-id" };
   const getCurrentUser = t.mock.fn(async (id: string) => id === providerId ? profile : otherUser);
   const listForMember = t.mock.fn<AdventRepository["listForMember"]>(async (id) =>
@@ -165,14 +171,59 @@ test("calendar detail and opening require membership and reject future days", as
   assert.equal((await app.inject({ ...open, url: `${url}/days/26/open`, headers })).statusCode, 400);
 });
 
-test("uses the viewer's local midnight and caps available doors at day 25", async (t) => {
+test("requires owner access on every editor endpoint", async (t) => {
+  const adventId = "eaed8160-ae43-4e71-bf7c-f91b987f27f9";
+  const joinedId = "1d032723-a1dc-416c-ba13-afdfc1112bf6";
+  const missingId = "b17f26d3-517f-4f4c-a2f1-ff9549cbfd94";
+  const calendar = { id: adventId, name: "Advent", year: 9999 };
+  const days = Array.from({ length: 25 }, (_, index) => ({ day: index + 1, content: "Surprise" }));
+  const app = setupApp(t, { async getCurrentUser() { return profile; } }, {
+    async findForMember(_userId, id) {
+      if (id === adventId || id === joinedId) return { ...calendar, id, isAdmin: id === adventId };
+    },
+    async listDays(id) { assert.equal(id, adventId); return days; },
+    async updateName(id, name) { assert.equal(id, adventId); return { ...calendar, name }; },
+    async updateDayContent(id, day, content) { assert.equal(id, adventId); return { day, content }; },
+  });
+  const headers = { authorization: `Bearer ${sessionToken(providerId)}` };
+  const editorRequests = (id: string) => [
+    { method: "GET", url: `/api/advent/${id}/days?timeZone=UTC` },
+    { method: "PATCH", url: `/api/advent/${id}`, payload: { name: " New name " } },
+    { method: "PATCH", url: `/api/advent/${id}/days/1`, payload: { content: "", timeZone: "UTC" } },
+  ] as const;
+
+  for (const request of editorRequests(adventId)) {
+    assert.equal((await app.inject(request)).statusCode, 401);
+  }
+  for (const request of editorRequests(joinedId)) {
+    const response = await app.inject({ ...request, headers });
+    assert.equal(response.statusCode, 403);
+    assert.equal(response.json().error.code, "EDIT_FORBIDDEN");
+  }
+  for (const request of editorRequests(missingId)) {
+    assert.equal((await app.inject({ ...request, headers })).statusCode, 404);
+  }
+  const responses = await Promise.all(editorRequests(adventId).map((request) => app.inject({ ...request, headers })));
+  assert.deepEqual(responses.map((response) => response.statusCode), [200, 200, 200]);
+  assert.deepEqual(responses.map((response) => response.json()), [
+    days.map((day) => ({ ...day, isEditable: true })),
+    { ...calendar, name: "New name" },
+    { day: 1, content: "" },
+  ]);
+});
+
+test("uses the viewer's local midnight for opening and editing December doors", async (t) => {
   const calendar = { id: "advent-id", name: "Advent", year: 2026, isAdmin: true };
   const door = { day: 1, content: "Surprise", openedAt: new Date("2026-12-01T07:00:00Z") };
   const listAvailableDays = t.mock.fn<AdventRepository["listAvailableDays"]>(async () => [door]);
   const recordOpening = t.mock.fn<AdventRepository["recordOpening"]>(async () => true);
+  const updateDayContent = t.mock.fn<AdventRepository["updateDayContent"]>(async (_id, day, content) => ({ day, content }));
   const repository: AdventRepository = {
     async listForMember() { return []; },
     async findForMember() { return calendar; },
+    async listDays() { return [{ day: door.day, content: door.content }]; },
+    async updateName() { throw new Error("Unexpected Advent rename"); },
+    updateDayContent,
     async createWithDaysAndAdmin() { return calendar; },
     async joinByTokenHash() { return null; },
     listAvailableDays,
@@ -184,16 +235,27 @@ test("uses the viewer's local midnight and caps available doors at day 25", asyn
   const west = adventDateFormatter("America/Los_Angeles")!;
   const east = adventDateFormatter("Europe/Berlin")!;
   assert.deepEqual(await service.getCalendar(userId, calendar.id, west), { ...calendar, days: [] });
-  assert.equal(await service.openDay(userId, calendar.id, 1, west), "locked");
+  await assert.rejects(service.openDay(userId, calendar.id, 1, west), { code: "DOOR_LOCKED" });
   assert.equal(recordOpening.mock.callCount(), 0);
   assert.deepEqual(await service.getCalendar(userId, calendar.id, east), { ...calendar, days: [door] });
   assert.deepEqual(listAvailableDays.mock.calls[0]?.arguments, [userId, calendar.id, 1]);
-  assert.equal(await service.openDay(userId, calendar.id, 1, east), "opened");
+  await service.openDay(userId, calendar.id, 1, east);
   assert.deepEqual(recordOpening.mock.calls[0]?.arguments, [userId, calendar.id, 1]);
+  assert.deepEqual(await service.updateDay(userId, calendar.id, 1, "Updated", east), { day: 1, content: "Updated" });
+  now = new Date("2026-12-01T23:00:00Z");
+  assert.deepEqual(await service.getEditableDays(userId, calendar.id, east), [
+    { day: 1, content: door.content, isEditable: false },
+  ]);
+  await assert.rejects(service.updateDay(userId, calendar.id, 1, "Too late", east), { code: "PAST_DAY" });
+  assert.deepEqual(await service.updateDay(userId, calendar.id, 1, "Still today", west), {
+    day: 1, content: "Still today",
+  });
   now = new Date("2026-12-30T00:00:00Z");
   await service.getCalendar(userId, calendar.id, west);
   now = new Date("2027-01-12T00:00:00Z");
   await service.getCalendar(userId, calendar.id, west);
+  await assert.rejects(service.updateDay(userId, calendar.id, 25, "Too late", west), { code: "PAST_DAY" });
+  assert.equal(updateDayContent.mock.callCount(), 2);
   assert.deepEqual(listAvailableDays.mock.calls.slice(1).map(({ arguments: args }) => args[2]), [25, 25]);
 });
 
