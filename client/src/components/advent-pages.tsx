@@ -1,9 +1,12 @@
 import { Show, useAuth } from '@clerk/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useJoinCalendar } from '../api/mutations/useJoinCalendar'
+import { useCalendars } from '../api/queries/useCalendars'
+import type { JoinedCalendar } from '../api/types'
+import { ApiError } from '../api/useFetch'
 import { AccountControls } from './account-controls'
 import { AdventCreationForm } from './advent-creation-form'
 import { SharedAdventCalendar } from './shared-advent-calendar'
-import { AdventApiError, joinAdvent, listAdvents, type CalendarSummary } from '../services/advent-api'
 
 const pageTitles = {
   '/advent': 'My calendars',
@@ -12,7 +15,6 @@ const pageTitles = {
 }
 
 type AdventPath = keyof typeof pageTitles
-type GetToken = () => Promise<string | null>
 
 type AdventPageProps = { path: AdventPath; adventId?: never } | { path: '/advent/calendar'; adventId: string }
 
@@ -38,39 +40,21 @@ export function AdventPage(props: AdventPageProps) {
 }
 
 function SignedInPage({ path, adventId }: AdventPageProps) {
-  const { getToken, sessionId } = useAuth()
+  const { sessionId } = useAuth()
   if (!sessionId) return null
 
   if (path === '/advent/calendar') {
-    return <SharedAdventCalendar key={`${sessionId}/${adventId}`} adventId={adventId} getToken={getToken} />
+    return <SharedAdventCalendar key={adventId} adventId={adventId} />
   }
-  if (path === '/advent/new') return <AdventCreationForm key={sessionId} getToken={getToken} />
-  if (path === '/advent/join') return <AdventJoin key={sessionId} getToken={getToken} />
-  return <AdventList key={sessionId} getToken={getToken} />
+  if (path === '/advent/new') return <AdventCreationForm />
+  if (path === '/advent/join') return <AdventJoin />
+  return <AdventList />
 }
 
-function AdventList({ getToken }: { getToken: GetToken }) {
-  const [calendars, setCalendars] = useState<CalendarSummary[] | 'error' | null>(null)
+function AdventList() {
+  const { data: calendars, isError } = useCalendars()
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-    async function load() {
-      try {
-        const token = await getToken()
-        if (signal.aborted) return
-        if (!token) throw new Error('Session unavailable')
-        const result = await listAdvents(token, signal)
-        if (!signal.aborted) setCalendars(result)
-      } catch {
-        if (!signal.aborted) setCalendars('error')
-      }
-    }
-    void load()
-    return () => controller.abort()
-  }, [getToken])
-
-  if (calendars === 'error') return <p className="advent-panel" role="alert">Could not load your calendars. Refresh to try again.</p>
+  if (isError && !calendars) return <p className="advent-panel" role="alert">Could not load your calendars. Refresh to try again.</p>
   if (!calendars) return <p className="advent-panel" role="status">Loading your calendars…</p>
   if (!calendars.length) return <p className="advent-panel">Calendars you create or join will appear here.</p>
   return (
@@ -82,33 +66,35 @@ function AdventList({ getToken }: { getToken: GetToken }) {
   )
 }
 
-function AdventJoin({ getToken }: { getToken: GetToken }) {
+function AdventJoin() {
   const invitation = window.location.hash.slice(1)
   const isValidInvitation = /^[A-Za-z0-9_-]{43}$/.test(invitation)
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState('')
+  const { mutateAsync } = useJoinCalendar()
+  const joinRequest = useRef<{ invitation: string; attempt: number; result: Promise<JoinedCalendar> } | null>(null)
 
   useEffect(() => {
     if (!isValidInvitation) return
-    const controller = new AbortController()
-    const { signal } = controller
-
-    async function join() {
-      try {
-        const token = await getToken()
-        if (signal.aborted) return
-        if (!token) throw new AdventApiError('Log in again to join this Advent.')
-        const { adventId } = await joinAdvent(token, invitation, signal)
-        if (!signal.aborted) window.location.replace(`/advent/${encodeURIComponent(adventId)}`)
-      } catch (error) {
-        if (!signal.aborted) {
-          setError(error instanceof AdventApiError ? error.message : 'Could not join this Advent.')
-        }
-      }
+    let active = true
+    if (joinRequest.current?.invitation !== invitation || joinRequest.current.attempt !== attempt) {
+      joinRequest.current = { invitation, attempt, result: mutateAsync(invitation) }
     }
-    void join()
-    return () => controller.abort()
-  }, [attempt, getToken, invitation, isValidInvitation])
+    void joinRequest.current.result.then(
+      ({ adventId }) => {
+        if (active) window.location.replace(`/advent/${encodeURIComponent(adventId)}`)
+      },
+      (error: unknown) => {
+        if (!active) return
+        if (error instanceof ApiError && error.code !== 'HTTP_ERROR') setError(error.message)
+        else if (error instanceof ApiError && error.status === 404) setError('This invitation is unavailable.')
+        else setError('Could not join this Advent.')
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [attempt, invitation, isValidInvitation, mutateAsync])
 
   if (!isValidInvitation) {
     return <p role="alert" className="advent-panel">Open a valid invitation link to join an Advent.</p>

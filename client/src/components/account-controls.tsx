@@ -5,18 +5,16 @@ import {
   SignOutButton,
   SignUpButton,
   UserButton,
-  useAuth,
 } from '@clerk/react'
-import { useEffect, useState, type ReactNode } from 'react'
-import { fetchCurrentUser, type CurrentUserProfile } from '../services/current-user-api'
+import type { ReactNode } from 'react'
+import { useCurrentUser } from '../api/queries/useCurrentUser'
+import { SessionQueryProvider } from '../providers/SessionQueryProvider'
 
 function SignedInAccount() {
-  const { getToken, sessionId } = useAuth()
-
   return (
     <>
       <UserButton />
-      {sessionId ? <AccountProfile key={sessionId} getToken={getToken} /> : null}
+      <AccountProfile />
       <a className="account-controls__button" href="/advent">My calendars</a>
       <a className="account-controls__button" href="/advent/new">Create an Advent</a>
       <SignOutButton redirectUrl="/">
@@ -26,33 +24,12 @@ function SignedInAccount() {
   )
 }
 
-function AccountProfile({ getToken }: { getToken: () => Promise<string | null> }) {
-  const [profile, setProfile] = useState<CurrentUserProfile | 'error' | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-
-    async function loadProfile() {
-      try {
-        const token = await getToken()
-        if (signal.aborted) return
-        if (!token) throw new Error('Clerk session token unavailable')
-
-        const currentUser = await fetchCurrentUser(token, signal)
-        if (!signal.aborted) setProfile(currentUser)
-      } catch {
-        if (!signal.aborted) setProfile('error')
-      }
-    }
-
-    void loadProfile()
-    return () => controller.abort()
-  }, [getToken])
+function AccountProfile() {
+  const { data: profile, isError } = useCurrentUser()
 
   return (
     <div className="account-controls__profile" role="status">
-      {profile === 'error' ? (
+      {isError ? (
         'Could not load your profile.'
       ) : profile ? (
         <>
@@ -75,24 +52,26 @@ export function AccountControls({ children }: { children?: ReactNode } = {}) {
 
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <div className="account-controls">
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <button className="account-controls__button" type="button">
-              Log in
-            </button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <button className="account-controls__button" type="button">
-              Create account
-            </button>
-          </SignUpButton>
-        </Show>
-        <Show when="signed-in">
-          <SignedInAccount />
-        </Show>
-      </div>
-      {children}
+      <SessionQueryProvider>
+        <div className="account-controls">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button className="account-controls__button" type="button">
+                Log in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="account-controls__button" type="button">
+                Create account
+              </button>
+            </SignUpButton>
+          </Show>
+          <Show when="signed-in">
+            <SignedInAccount />
+          </Show>
+        </div>
+        {children}
+      </SessionQueryProvider>
     </ClerkProvider>
   )
 }

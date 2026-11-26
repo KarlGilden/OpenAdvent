@@ -1,52 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useOpenDoor } from '../api/mutations/useOpenDoor'
+import { useCalendar } from '../api/queries/useCalendar'
+import type { CalendarView } from '../api/types'
+import { ApiError } from '../api/useFetch'
 import { ADVENT_DAYS, type AdventDay } from '../domain/advent'
-import { AdventApiError, getAdvent, saveOpenedDoor, type CalendarView } from '../services/advent-api'
 import { AdventCalendarGrid, type AdventContent } from './advent-calendar-grid'
 
 interface SharedAdventProps {
   adventId: string
-  getToken: () => Promise<string | null>
 }
 
-export function SharedAdventCalendar({ adventId, getToken }: SharedAdventProps) {
-  const [view, setView] = useState<CalendarView | string | null>(null)
+export function SharedAdventCalendar({ adventId }: SharedAdventProps) {
   const [timeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const { data: view, error } = useCalendar(adventId, timeZone)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const { signal } = controller
-    async function load() {
-      try {
-        const token = await getToken()
-        if (signal.aborted) return
-        if (!token) throw new AdventApiError('Log in again to view this calendar.')
-        const calendar = await getAdvent(token, adventId, timeZone, signal)
-        if (!signal.aborted) setView(calendar)
-      } catch (error) {
-        if (!signal.aborted) {
-          setView(error instanceof AdventApiError ? error.message : 'Could not load this calendar. Refresh to try again.')
-        }
-      }
-    }
-    void load()
-    return () => controller.abort()
-  }, [adventId, getToken, timeZone])
-
-  if (typeof view === 'string') return <p className="advent-panel" role="alert">{view}</p>
+  if (!view && error) {
+    const message = error instanceof ApiError ? error.message : 'Could not load this calendar. Refresh to try again.'
+    return <p className="advent-panel" role="alert">{message}</p>
+  }
   if (!view) return <p className="advent-panel" role="status">Loading your calendar…</p>
 
-  return <SharedAdventDoors calendar={view} getToken={getToken} timeZone={timeZone} />
+  return <SharedAdventDoors calendar={view} timeZone={timeZone} />
 }
 
-function SharedAdventDoors({ calendar, getToken, timeZone }: {
+function SharedAdventDoors({ calendar, timeZone }: {
   calendar: CalendarView
-  getToken: SharedAdventProps['getToken']
   timeZone: string
 }) {
   const [revealed, setRevealed] = useState<AdventContent>({})
   const [unsaved, setUnsaved] = useState<AdventDay[]>([])
   const pending = useRef(new Set<AdventDay>())
-  const saved = useRef(new Set(calendar.days.filter(({ openedAt }) => openedAt !== null).map(({ day }) => day)))
+  const accepted = useRef(new Set<AdventDay>())
+  const { mutateAsync: saveDoor } = useOpenDoor(calendar.id, timeZone)
   const available = new Map(calendar.days.map((door) => [door.day, door]))
   const openedAdvents = ADVENT_DAYS.filter((day) => available.get(day)?.openedAt || revealed[day] !== undefined)
 
@@ -62,14 +47,12 @@ function SharedAdventDoors({ calendar, getToken, timeZone }: {
     if (!door || isDoorLocked(day)) return
 
     setRevealed((current) => ({ ...current, [day]: door.content || 'This door is empty.' }))
-    if (saved.current.has(day) || pending.current.has(day)) return
+    if (door.openedAt || accepted.current.has(day) || pending.current.has(day)) return
 
     pending.current.add(day)
     try {
-      const token = await getToken()
-      if (!token) throw new Error('Session unavailable')
-      await saveOpenedDoor(token, calendar.id, day, timeZone)
-      saved.current.add(day)
+      await saveDoor(day)
+      accepted.current.add(day)
       setUnsaved((current) => current.filter((failedDay) => failedDay !== day))
     } catch {
       setUnsaved((current) => current.includes(day) ? current : [...current, day])

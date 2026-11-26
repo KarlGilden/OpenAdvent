@@ -1,12 +1,12 @@
 ﻿import { useState, type FormEvent } from 'react'
-import { AdventApiError, createAdvent, type CalendarSummary } from '../services/advent-api'
+import { useCreateCalendar } from '../api/mutations/useCreateCalendar'
+import { ApiError } from '../api/useFetch'
 
 const days = Array.from({ length: 25 }, (_, index) => index + 1)
 
-export function AdventCreationForm({ getToken }: { getToken: () => Promise<string | null> }) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function AdventCreationForm() {
+  const { mutateAsync, isPending: isSubmitting, data: created } = useCreateCalendar()
   const [error, setError] = useState('')
-  const [created, setCreated] = useState<(CalendarSummary & { inviteUrl: string }) | null>(null)
   const [copied, setCopied] = useState(false)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -22,16 +22,11 @@ export function AdventCreationForm({ getToken }: { getToken: () => Promise<strin
       return
     }
 
-    setIsSubmitting(true)
     setError('')
     try {
-      const token = await getToken()
-      if (!token) throw new AdventApiError('Log in again to create an Advent.')
-      setCreated(await createAdvent(token, name, year, contents))
+      await mutateAsync({ name, year, contents })
     } catch (error) {
-      setError(error instanceof AdventApiError ? error.message : 'Could not create your Advent. Try again.')
-    } finally {
-      setIsSubmitting(false)
+      setError(error instanceof ApiError ? error.message : 'Could not create your Advent. Try again.')
     }
   }
 
