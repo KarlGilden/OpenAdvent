@@ -61,8 +61,9 @@ export function listAdvents(token: string, signal: AbortSignal) {
   return adventRequest<CalendarSummary[]>(token, '/api/advent', { signal })
 }
 
-export function joinAdvent(token: string, invitation: string) {
+export function joinAdvent(token: string, invitation: string, signal: AbortSignal) {
   return adventRequest<{ adventId: string }>(token, '/api/advent/join', {
     body: { token: invitation },
+    signal,
   })
 }

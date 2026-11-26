@@ -5,7 +5,6 @@ import { buildApp } from "../../src/api/app.js";
 import type { AdventRepository } from "../../src/core/repositories/advent.repository.js";
 import type { NewUserProfile, UserProfile } from "../../src/core/repositories/user.repository.js";
 import { UserService } from "../../src/core/services/user.service.js";
-import { ExampleService } from "../../src/core/services/example.service.js";
 import { AdventService, adventDateFormatter } from "../../src/core/services/advent.service.js";
 
 const issuer = "https://clerk.example.test";
@@ -48,7 +47,6 @@ function setupApp(
       async joinByTokenHash() { throw new Error("Unexpected Advent join"); },
       ...adventRepository,
     },
-    exampleService: new ExampleService({ async checkConnection() {} }),
     async close() {},
   });
   t.after(() => app.close());

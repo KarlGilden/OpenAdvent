@@ -2,6 +2,7 @@ import {
   ClerkProvider,
   Show,
   SignInButton,
+  SignOutButton,
   SignUpButton,
   UserButton,
   useAuth,
@@ -18,6 +19,9 @@ function SignedInAccount() {
       {sessionId ? <AccountProfile key={sessionId} getToken={getToken} /> : null}
       <a className="account-controls__button" href="/advent">My calendars</a>
       <a className="account-controls__button" href="/advent/new">Create an Advent</a>
+      <SignOutButton redirectUrl="/">
+        <button className="account-controls__button" type="button">Sign out</button>
+      </SignOutButton>
     </>
   )
 }

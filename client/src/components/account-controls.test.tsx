@@ -15,6 +15,7 @@ vi.mock('@clerk/react', () => ({
   Show: ({ children, when }: { children: ReactNode; when: string }) =>
     when === (auth.sessionId ? 'signed-in' : 'signed-out') ? children : null,
   SignInButton: ({ children }: { children: ReactNode }) => children,
+  SignOutButton: ({ children }: { children: ReactNode }) => children,
   SignUpButton: ({ children }: { children: ReactNode }) => children,
   UserButton: () => <button type="button">Manage account</button>,
   useAuth: () => auth,
@@ -43,10 +44,40 @@ describe('AccountControls', () => {
     render(<AccountControls />)
 
     expect(await screen.findByText('Ada Lovelace')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
     expect(screen.getByText('ada@example.test')).toBeVisible()
     expect(fetchProfile).toHaveBeenCalledWith('/api/user', expect.objectContaining({
       headers: { Authorization: 'Bearer session-token' },
     }))
+  })
+
+  it('automatically submits the invitation as soon as the visitor signs in', async () => {
+    const invitation = 'A'.repeat(43)
+    const previousUrl = window.location.href
+    window.history.replaceState(null, '', `/advent/join#${invitation}`)
+    try {
+      auth.sessionId = null
+      fetchProfile.mockImplementation(async (path) => path === '/api/advent/join'
+        ? new Response(null, { status: 404 })
+        : Response.json({ name: 'Ada', email: 'ada@example.test' }))
+
+      const { rerender } = render(<AdventPage path="/advent/join" />)
+      expect(screen.getByText('Log in to accept this invitation.')).toBeVisible()
+      expect(fetchProfile).not.toHaveBeenCalled()
+
+      auth.sessionId = 'session-one'
+      rerender(<AdventPage path="/advent/join" />)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('This invitation is unavailable.')
+      expect(fetchProfile.mock.calls.filter(([path]) => path === '/api/advent/join')).toHaveLength(1)
+      expect(fetchProfile).toHaveBeenCalledWith('/api/advent/join', expect.objectContaining({
+        method: 'POST',
+        headers: { Authorization: 'Bearer session-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: invitation }),
+      }))
+    } finally {
+      window.history.replaceState(null, '', previousUrl)
+    }
   })
 
   it('clears the profile when the session changes and cancels when signing out', async () => {
@@ -64,6 +95,7 @@ describe('AccountControls', () => {
     rerender(<AccountControls />)
     expect(fetchProfile.mock.calls[1]?.[1]?.signal?.aborted).toBe(true)
     expect(screen.getByRole('button', { name: 'Log in' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull()
     expect(screen.queryByText('Create an Advent')).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
     expect(fetchProfile).toHaveBeenCalledTimes(2)
