@@ -15,9 +15,14 @@ function doorLabel({
 	day,
 	isOpened,
 	isLoading,
+	isLocked,
 	content,
 	error,
 }: Omit<AdventDoorProps, "onOpen">): string {
+	if (isLocked) {
+		return `Day ${day}, locked`;
+	}
+
 	if (isLoading) {
 		return `Day ${day}, opening`;
 	}

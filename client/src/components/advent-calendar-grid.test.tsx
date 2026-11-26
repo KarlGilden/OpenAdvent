@@ -17,11 +17,13 @@ describe('AdventCalendarGrid', () => {
       />,
     )
 
-    const doors = screen.getAllByRole('button')
+    const doors = document.querySelectorAll<HTMLButtonElement>('.advent-door')
 
     expect(doors).toHaveLength(25)
     ADVENT_DAYS.forEach((day, index) => {
-      expect(doors[index]).toHaveAccessibleName(`Day ${day}, unopened`)
+      expect(doors[index]?.querySelector('.visually-hidden')).toHaveTextContent(
+        `Day ${day}, unopened`,
+      )
     })
   })
 
@@ -87,7 +89,7 @@ describe('AdventCalendarGrid', () => {
   it('unlocks today and previous days while locking future days', async () => {
     const user = userEvent.setup()
     const onOpenAdvent = vi.fn()
-    render(
+    const { container } = render(
       <AdventCalendarGrid
         days={ADVENT_DAYS}
         openedAdvents={[]}
@@ -96,13 +98,20 @@ describe('AdventCalendarGrid', () => {
       />,
     )
 
-    const todayDoor = screen.getByRole('button', { name: 'Day 20, unopened' })
-    const futureDoor = screen.getByRole('button', {
-      name: 'Day 21, locked. Opens Nov 21',
-    })
+    const todayDoor = container.querySelector<HTMLButtonElement>(
+      '.calendar__day:nth-child(20) .advent-door',
+    )
+    const futureDoor = container.querySelector<HTMLButtonElement>(
+      '.calendar__day:nth-child(21) .advent-door',
+    )
+
+    if (!todayDoor || !futureDoor) {
+      throw new Error('Expected the current and future advent doors to render')
+    }
 
     expect(todayDoor).toBeEnabled()
     expect(futureDoor).toBeDisabled()
+    expect(futureDoor).toHaveAccessibleName('Day 21, locked')
 
     await user.click(todayDoor)
     await user.click(futureDoor)

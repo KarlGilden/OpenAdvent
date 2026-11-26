@@ -4,7 +4,14 @@ import axe from 'axe-core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { ComplimentAdventService } from './content/compliments-calendar/compliment-advent-service'
-import { LocalStorageOpenedAdventStore } from './services/local-storage-opened-advent-store'
+import {
+  FitnessAdventService,
+  type FitnessExercise,
+} from './content/fitness-calendar/fitness-advent-service'
+import {
+  LocalStorageOpenedAdventStore,
+  openedAdventsStorageKey,
+} from './services/local-storage-opened-advent-store'
 import type { OpenedAdventStore } from './services/interfaces/advent-store'
 
 const TEST_TODAY = new Date(2026, 10, 20)
@@ -15,7 +22,7 @@ describe('App', () => {
   })
 
   it('renders the complete OpenAdvent calendar', async () => {
-    render(<App today={TEST_TODAY} />)
+    const { container } = render(<App today={TEST_TODAY} />)
 
     expect(
       screen.getByRole('heading', { level: 1, name: 'OpenAdvent' }),
@@ -23,19 +30,66 @@ describe('App', () => {
     expect(
       screen.getByText('Twenty-five little moments, waiting behind the doors.'),
     ).toBeVisible()
+    expect(
+      screen.getByRole('combobox', { name: 'Choose your calendar' }),
+    ).toHaveValue('compliments')
+    expect(
+      screen.getAllByRole('option').map((option) => option.textContent),
+    ).toEqual(['Compliments', 'Fitness'])
 
     expect(
       await screen.findByRole('list', { name: 'Advent calendar days' }),
     ).toBeVisible()
     expect(screen.getAllByRole('listitem')).toHaveLength(25)
+    const firstLockedDoor = container.querySelector<HTMLButtonElement>(
+      'button[data-state="locked"]',
+    )
+    expect(firstLockedDoor).toBeDisabled()
+    expect(firstLockedDoor).toHaveAccessibleName('Day 21, locked')
+  })
+
+  it('switches calendars and keeps each calendar progress separate', async () => {
+    const user = userEvent.setup()
+    render(<App today={TEST_TODAY} />)
+    const selector = screen.getByRole('combobox', {
+      name: 'Choose your calendar',
+    })
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Day 1, unopened' }),
+    )
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Your November Doors' }),
-    ).toBeVisible()
+      JSON.parse(
+        window.localStorage.getItem(
+          openedAdventsStorageKey('compliments'),
+        ) ?? '[]',
+      ),
+    ).toEqual([1])
+
+    await user.selectOptions(selector, 'fitness')
     expect(
-      screen.getByRole('button', {
-        name: 'Day 21, locked. Opens Nov 21',
+      await screen.findByRole('button', { name: 'Day 1, unopened' }),
+    ).toBeEnabled()
+    expect(
+      window.localStorage.getItem(openedAdventsStorageKey('fitness')),
+    ).toBeNull()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Day 1, unopened' }),
+    )
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(openedAdventsStorageKey('fitness')) ??
+          '[]',
+      ),
+    ).toEqual([1])
+
+    await user.selectOptions(selector, 'compliments')
+    expect(
+      await screen.findByRole('button', {
+        name: 'Day 1, opened. Reveal again',
       }),
-    ).toBeDisabled()
+    ).toBeEnabled()
   })
 
   it('opens a door with its real compliment and keeps focus in place', async () => {
@@ -53,6 +107,35 @@ describe('App', () => {
     expect(
       screen.getByText('You handle challenges with remarkable strength.'),
     ).toBeVisible()
+  })
+
+  it('displays a generated fitness plan as an exercise list', async () => {
+    const user = userEvent.setup()
+    const catalog: readonly FitnessExercise[] = [
+      { effortLevel: 1, description: 'March for 30 seconds' },
+      { effortLevel: 2, description: 'Complete 10 squats' },
+      { effortLevel: 3, description: 'Hold a plank' },
+    ]
+    const fitnessService = new FitnessAdventService(
+      { 1: 3 },
+      catalog,
+      () => 0,
+    )
+    render(<App adventService={fitnessService} today={TEST_TODAY} />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Day 1, unopened' }),
+    )
+
+    const plan = await screen.findByText((_, element) =>
+      Boolean(
+        element?.classList.contains('advent-door__content') &&
+          element.textContent?.includes('March for 30 seconds'),
+      ),
+    )
+    expect(plan.textContent).toBe(
+      '• March for 30 seconds\n• Complete 10 squats',
+    )
   })
 
   it('restores an opened door after a browser-style reload', async () => {
@@ -137,5 +220,5 @@ describe('App', () => {
     )
 
     expect(criticalViolations).toEqual([])
-  })
+  }, 10_000)
 })

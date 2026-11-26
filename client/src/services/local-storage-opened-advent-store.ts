@@ -4,9 +4,17 @@ import {
   parseAdventDay,
   type AdventDay,
 } from '../domain/advent'
+import type { CalendarType } from '../content/calendar-registry'
 import type { OpenedAdventStore } from './interfaces/advent-store'
 
-export const OPENED_ADVENTS_STORAGE_KEY = 'open-advent:v1:opened-advents'
+const OPENED_ADVENTS_STORAGE_KEY_PREFIX = 'open-advent:v1:opened-advents'
+
+export function openedAdventsStorageKey(calendarType: CalendarType): string {
+  return `${OPENED_ADVENTS_STORAGE_KEY_PREFIX}:${calendarType}`
+}
+
+export const OPENED_ADVENTS_STORAGE_KEY =
+  openedAdventsStorageKey('compliments')
 
 type AdventStorage = Pick<Storage, 'getItem' | 'setItem'>
 
@@ -35,10 +43,17 @@ function parseStoredAdvents(value: string | null): readonly AdventDay[] {
  * values are returned once each in calendar order.
  */
 export class LocalStorageOpenedAdventStore implements OpenedAdventStore {
-  constructor(private readonly storage: AdventStorage = globalThis.localStorage) {}
+  private readonly storageKey: string
+
+  constructor(
+    private readonly storage: AdventStorage = globalThis.localStorage,
+    calendarType: CalendarType = 'compliments',
+  ) {
+    this.storageKey = openedAdventsStorageKey(calendarType)
+  }
 
   async loadOpenedAdvents(): Promise<readonly AdventDay[]> {
-    return parseStoredAdvents(this.storage.getItem(OPENED_ADVENTS_STORAGE_KEY))
+    return parseStoredAdvents(this.storage.getItem(this.storageKey))
   }
 
   async markAdventOpened(advent: AdventDay): Promise<void> {
@@ -53,9 +68,6 @@ export class LocalStorageOpenedAdventStore implements OpenedAdventStore {
       (candidate) => candidate === day || openedAdvents.includes(candidate),
     )
 
-    this.storage.setItem(
-      OPENED_ADVENTS_STORAGE_KEY,
-      JSON.stringify(updatedAdvents),
-    )
+    this.storage.setItem(this.storageKey, JSON.stringify(updatedAdvents))
   }
 }

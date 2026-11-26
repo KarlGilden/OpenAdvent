@@ -3,6 +3,7 @@ import { InvalidAdventDayError, type AdventDay } from '../../domain/advent'
 import {
   LocalStorageOpenedAdventStore,
   OPENED_ADVENTS_STORAGE_KEY,
+  openedAdventsStorageKey,
 } from '../local-storage-opened-advent-store'
 
 class MemoryStorage {
@@ -32,6 +33,23 @@ describe('LocalStorageOpenedAdventStore', () => {
 
     const storeAfterRefresh = new LocalStorageOpenedAdventStore(storage)
     await expect(storeAfterRefresh.loadOpenedAdvents()).resolves.toEqual([18])
+  })
+
+  it('keeps opened days partitioned by calendar type', async () => {
+    const storage = new MemoryStorage()
+    const complimentsStore = new LocalStorageOpenedAdventStore(
+      storage,
+      'compliments',
+    )
+    const fitnessStore = new LocalStorageOpenedAdventStore(storage, 'fitness')
+
+    await complimentsStore.markAdventOpened(4)
+    await fitnessStore.markAdventOpened(9)
+
+    await expect(complimentsStore.loadOpenedAdvents()).resolves.toEqual([4])
+    await expect(fitnessStore.loadOpenedAdvents()).resolves.toEqual([9])
+    expect(storage.getItem(openedAdventsStorageKey('compliments'))).toBe('[4]')
+    expect(storage.getItem(openedAdventsStorageKey('fitness'))).toBe('[9]')
   })
 
   it('stores each opened day once in calendar order', async () => {

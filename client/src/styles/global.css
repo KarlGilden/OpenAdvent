@@ -166,7 +166,7 @@ p {
 .app-header {
   position: relative;
   width: min(100%, 48rem);
-  margin: 0 auto clamp(var(--space-8), 5vw, var(--space-12));
+  margin: 0 auto var(--space-6);
   text-align: center;
 }
 
@@ -196,6 +196,50 @@ p {
   font-family: var(--font-display);
   font-size: var(--font-size-lg);
   line-height: 1.55;
+}
+
+.calendar-picker {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 auto clamp(var(--space-8), 5vw, var(--space-12));
+  color: var(--color-text-on-dark);
+}
+
+.calendar-picker label {
+  font-weight: 700;
+}
+
+.calendar-picker__control {
+  position: relative;
+  display: inline-grid;
+  min-width: 10rem;
+  align-items: center;
+}
+
+.calendar-picker__control select {
+  width: 100%;
+  padding: var(--space-3) calc(var(--space-8) + var(--space-2))
+    var(--space-3) var(--space-4);
+  color: var(--color-primary-strong);
+  font-weight: 700;
+  cursor: pointer;
+  appearance: none;
+  background: var(--color-ivory-50);
+  border: 0.125rem solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 var(--space-1) 0 rgb(0 0 0 / 22%);
+}
+
+.calendar-picker__control > span {
+  position: absolute;
+  right: var(--space-4);
+  color: var(--color-primary-strong);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  pointer-events: none;
 }
 
 .calendar {
@@ -458,6 +502,7 @@ p {
   font-weight: 700;
   line-height: 1.25;
   text-wrap: balance;
+  white-space: pre-line;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
 }
@@ -582,6 +627,11 @@ p {
 
   .app-header {
     margin-top: var(--space-8);
+  }
+
+  .calendar-picker {
+    display: grid;
+    justify-items: center;
   }
 
   .calendar {

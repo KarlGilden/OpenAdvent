@@ -52,14 +52,12 @@ describe("AdventDoor", () => {
 		const onOpen = vi.fn();
 		render(<AdventDoor {...DEFAULT_PROPS} day={21} isLocked onOpen={onOpen} />);
 
-		const door = screen.getByRole("button", {
-			name: "Day 21, locked. Opens Nov 21",
-		});
+		const door = screen.getByRole("button", { name: "Day 21, locked" });
 		await user.click(door);
 
 		expect(door).toBeDisabled();
 		expect(door).toHaveAttribute("data-state", "locked");
-		expect(door).toHaveTextContent("Opens Nov 21");
+		expect(door.querySelector(".advent-door__lock-mark")).toBeInTheDocument();
 		expect(onOpen).not.toHaveBeenCalled();
 	});
 

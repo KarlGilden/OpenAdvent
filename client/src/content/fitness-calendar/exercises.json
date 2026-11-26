@@ -1,0 +1,42 @@
+[
+  {
+    "effortLevel": 1,
+    "description": "March in place for 30 seconds"
+  },
+  {
+    "effortLevel": 1,
+    "description": "Complete 5 wall push-ups"
+  },
+  {
+    "effortLevel": 2,
+    "description": "Complete 10 bodyweight squats"
+  },
+  {
+    "effortLevel": 2,
+    "description": "Complete 8 alternating reverse lunges"
+  },
+  {
+    "effortLevel": 3,
+    "description": "Hold a plank for 30 seconds"
+  },
+  {
+    "effortLevel": 3,
+    "description": "Complete 20 mountain climbers"
+  },
+  {
+    "effortLevel": 4,
+    "description": "Complete 10 push-ups"
+  },
+  {
+    "effortLevel": 4,
+    "description": "Complete 12 squat jumps"
+  },
+  {
+    "effortLevel": 5,
+    "description": "Complete 10 burpees"
+  },
+  {
+    "effortLevel": 5,
+    "description": "Run high knees for 45 seconds"
+  }
+]
