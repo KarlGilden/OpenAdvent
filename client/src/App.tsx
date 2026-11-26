@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react'
+import { AccountControls } from './components/account-controls'
 import { AdventCalendarGrid } from './components/advent-calendar-grid'
 import {
   CALENDARS,
@@ -148,6 +149,7 @@ export function App({
         <p className="app-header__intro">
           Twenty-five little moments, waiting behind the doors.
         </p>
+        <AccountControls />
       </header>
 
       <div className="calendar-picker">

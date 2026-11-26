@@ -1,0 +1,388 @@
+{
+  "id": "56adc398-9d35-4842-8ede-ef908411d215",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.advent": {
+      "name": "advent",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invite_token_hash": {
+          "name": "invite_token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "advent_invite_token_hash_key": {
+          "name": "advent_invite_token_hash_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "invite_token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "advent_name_check": {
+          "name": "advent_name_check",
+          "value": "btrim(\"advent\".\"name\") <> ''"
+        },
+        "advent_year_check": {
+          "name": "advent_year_check",
+          "value": "\"advent\".\"year\" BETWEEN 1 AND 9999"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.advent_day": {
+      "name": "advent_day",
+      "schema": "",
+      "columns": {
+        "advent_id": {
+          "name": "advent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "advent_day": {
+          "name": "advent_day",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "advent_day_advent_id_fkey": {
+          "name": "advent_day_advent_id_fkey",
+          "tableFrom": "advent_day",
+          "tableTo": "advent",
+          "columnsFrom": [
+            "advent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "advent_day_pkey": {
+          "name": "advent_day_pkey",
+          "columns": [
+            "advent_id",
+            "advent_day"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "advent_day_advent_day_check": {
+          "name": "advent_day_advent_day_check",
+          "value": "\"advent_day\".\"advent_day\" BETWEEN 1 AND 25"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.advent_day_opening": {
+      "name": "advent_day_opening",
+      "schema": "",
+      "columns": {
+        "advent_id": {
+          "name": "advent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "advent_day": {
+          "name": "advent_day",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opened_at": {
+          "name": "opened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "advent_day_opening_day_idx": {
+          "name": "advent_day_opening_day_idx",
+          "columns": [
+            {
+              "expression": "advent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "advent_day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "advent_day_opening_advent_id_user_id_fkey": {
+          "name": "advent_day_opening_advent_id_user_id_fkey",
+          "tableFrom": "advent_day_opening",
+          "tableTo": "advent_member",
+          "columnsFrom": [
+            "advent_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "advent_id",
+            "user_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "advent_day_opening_advent_id_advent_day_fkey": {
+          "name": "advent_day_opening_advent_id_advent_day_fkey",
+          "tableFrom": "advent_day_opening",
+          "tableTo": "advent_day",
+          "columnsFrom": [
+            "advent_id",
+            "advent_day"
+          ],
+          "columnsTo": [
+            "advent_id",
+            "advent_day"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "advent_day_opening_pkey": {
+          "name": "advent_day_opening_pkey",
+          "columns": [
+            "advent_id",
+            "user_id",
+            "advent_day"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "advent_day_opening_advent_day_check": {
+          "name": "advent_day_opening_advent_day_check",
+          "value": "\"advent_day_opening\".\"advent_day\" BETWEEN 1 AND 25"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.advent_member": {
+      "name": "advent_member",
+      "schema": "",
+      "columns": {
+        "advent_id": {
+          "name": "advent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "joined_at": {
+          "name": "joined_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "advent_member_user_id_idx": {
+          "name": "advent_member_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "advent_member_advent_id_fkey": {
+          "name": "advent_member_advent_id_fkey",
+          "tableFrom": "advent_member",
+          "tableTo": "advent",
+          "columnsFrom": [
+            "advent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "advent_member_user_id_fkey": {
+          "name": "advent_member_user_id_fkey",
+          "tableFrom": "advent_member",
+          "tableTo": "app_user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "advent_member_pkey": {
+          "name": "advent_member_pkey",
+          "columns": [
+            "advent_id",
+            "user_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.app_user": {
+      "name": "app_user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "app_user_provider_id_key": {
+          "name": "app_user_provider_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

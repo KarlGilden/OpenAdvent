@@ -198,6 +198,34 @@ p {
   line-height: 1.55;
 }
 
+.account-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.account-controls__profile {
+  display: grid;
+  min-width: 0;
+  text-align: start;
+  overflow-wrap: anywhere;
+  color: var(--color-text-on-dark);
+  font-size: var(--font-size-sm);
+}
+
+.account-controls__button {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-strong);
+  color: var(--color-text-on-dark);
+  cursor: pointer;
+}
+
 .calendar-picker {
   display: flex;
   width: fit-content;
