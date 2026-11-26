@@ -207,6 +207,72 @@ p {
   margin-top: var(--space-4);
 }
 
+.advent-page .app-header a {
+  color: var(--color-accent);
+}
+
+.advent-panel {
+  width: min(100%, 60rem);
+  margin: var(--space-6) auto;
+  padding: clamp(var(--space-3), 4vw, var(--space-8));
+  border: 1px solid var(--color-accent);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  text-align: left;
+}
+
+.advent-panel fieldset {
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.advent-panel legend {
+  color: var(--color-primary-strong);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.advent-fields,
+.advent-day-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-4);
+  margin-block-start: var(--space-3);
+}
+
+.advent-panel input,
+.advent-panel textarea {
+  display: block;
+  width: 100%;
+  margin-block: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-spruce-800);
+  border-radius: 0.25rem;
+  font: inherit;
+}
+
+.advent-panel textarea {
+  resize: vertical;
+}
+
+.advent-list {
+  list-style: none;
+}
+
+.advent-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  overflow-wrap: anywhere;
+}
+
+.advent-list li + li {
+  border-top: 1px solid var(--color-accent);
+}
+
 .account-controls__profile {
   display: grid;
   min-width: 0;
@@ -217,12 +283,15 @@ p {
 }
 
 .account-controls__button {
+  display: inline-flex;
+  align-items: center;
   min-height: 2.75rem;
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
   background: var(--color-primary-strong);
   color: var(--color-text-on-dark);
+  text-decoration: none;
   cursor: pointer;
 }
 

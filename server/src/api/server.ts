@@ -6,6 +6,7 @@ import { ClerkUserIdentityProvider } from "../infrastructure/auth/clerk-user-ide
 import { createDatabase } from "../infrastructure/data/db.js";
 import { DrizzleExampleRepository } from "../infrastructure/repositories/example.repository.drizzle.js";
 import { DrizzleUserRepository } from "../infrastructure/repositories/user.repository.drizzle.js";
+import { DrizzleAdventRepository } from "../infrastructure/repositories/advent.repository.drizzle.js";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 
@@ -19,6 +20,7 @@ const app = buildApp({
     new ClerkUserIdentityProvider(clerk.users),
   ),
   exampleService: new ExampleService(new DrizzleExampleRepository(database.db)),
+  adventRepository: new DrizzleAdventRepository(database.db),
   close: database.close,
 });
 

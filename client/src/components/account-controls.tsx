@@ -6,7 +6,7 @@ import {
   UserButton,
   useAuth,
 } from '@clerk/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { fetchCurrentUser, type CurrentUserProfile } from '../services/current-user-api'
 
 function SignedInAccount() {
@@ -16,6 +16,8 @@ function SignedInAccount() {
     <>
       <UserButton />
       {sessionId ? <AccountProfile key={sessionId} getToken={getToken} /> : null}
+      <a className="account-controls__button" href="/advent">My calendars</a>
+      <a className="account-controls__button" href="/advent/new">Create an Advent</a>
     </>
   )
 }
@@ -60,11 +62,11 @@ function AccountProfile({ getToken }: { getToken: () => Promise<string | null> }
   )
 }
 
-export function AccountControls() {
+export function AccountControls({ children }: { children?: ReactNode } = {}) {
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim()
 
   if (!publishableKey) {
-    return null
+    return children ? <p>Sign-in is unavailable.</p> : null
   }
 
   return (
@@ -86,6 +88,7 @@ export function AccountControls() {
           <SignedInAccount />
         </Show>
       </div>
+      {children}
     </ClerkProvider>
   )
 }
